@@ -134,10 +134,10 @@ public class CameraObject extends CameraBase implements ICameraObject {
         @Override
         public void onPictureTaken(byte[] data, Camera camera) {
             int compressLevel = CameraObject.this.compressLevelProp();
-            boolean osdRotate = CameraObject.this.osdRotateProp();
+            boolean enableRotate = CameraObject.this.enableRotateProp();
             Intent intent = new Intent();
             OutputStream stream = null;
-            Logger.T(TAG, "Osd OnPictureTaken");
+
             try {
 
                 final Map<String, String> propertyMap = getActualPropertyMap();
@@ -190,7 +190,7 @@ public class CameraObject extends CameraBase implements ICameraObject {
                     m.postRotate(180); //m.postRotate(90);
                 }else{
                     Logger.T(TAG, "Rotate else: " + OrientationListnerService.mRotation);
-                    if(osdRotate) {
+                    if(enableRotate) {
                         m.postRotate(OrientationListnerService.mRotation + 90);
                     }
 //                    m.postRotate(OrientationListnerService.mRotation);
@@ -327,11 +327,10 @@ public class CameraObject extends CameraBase implements ICameraObject {
                     }
                     else
                     {
-                        Logger.T(TAG, "Osd filePath: " + filePath);
-                        Logger.T(TAG, "Osd Image size: " + bitmap.getWidth() + "X" + bitmap.getHeight());
+                        Logger.T(TAG, "Image size: " + bitmap.getWidth() + "X" + bitmap.getHeight());
                         stream = new FileOutputStream(filePath);                        
                         resultUri = Uri.fromFile(new File(filePath));
-                        Logger.T(TAG, "Osd resultUri: " + resultUri);
+
                         byte[] byteArray = null;
   	                    if(bitmap != null){
   	                    	if (!Boolean.parseBoolean(getActualPropertyMap().get("useSystemViewfinder"))) {
@@ -769,7 +768,7 @@ public class CameraObject extends CameraBase implements ICameraObject {
 
     }
 
-    // Osd
+    // Read compress level property
     private int compressLevelProp() {
         int compressLevel = 100;
         final Map<String, String> propertyMap = getActualPropertyMap();
@@ -780,20 +779,20 @@ public class CameraObject extends CameraBase implements ICameraObject {
                 compressLevel = 100;
             }
         }
-        Logger.T(TAG, "Osd compress level: " + compressLevel);
+        Logger.T(TAG, "Compress level: " + compressLevel);
         return compressLevel;
     }
 
-    // Osd
-    private boolean osdRotateProp() {
+    // Read rotate property
+    private boolean enableRotateProp() {
         boolean rotate = false;
         final Map<String, String> propertyMap = getActualPropertyMap();
 
-        Logger.T(TAG, "Osd rotate prop: " + propertyMap.get("osdRotate"));
+        Logger.T(TAG, "Rotate prop: " + propertyMap.get("enableRotate"));
 
-        if(propertyMap.get("osdRotate") != null) {
+        if(propertyMap.get("enableRotate") != null) {
             try {
-                String strRotate = propertyMap.get("osdRotate");
+                String strRotate = propertyMap.get("enableRotate");
                 rotate = strRotate.equals("1");
             } catch (NumberFormatException n) {
                 rotate = false;
@@ -802,7 +801,7 @@ public class CameraObject extends CameraBase implements ICameraObject {
         return rotate;
     }
 
-    // Osd
+    // Create thumb
     private void thumbCreate(Bitmap imageBitmap, String filePath) {
         byte[] imageData = null;
         Bitmap thumbBitmap = null;
@@ -825,10 +824,10 @@ public class CameraObject extends CameraBase implements ICameraObject {
                 thumbBitmap = null;
                 System.gc();
             }
-            Logger.T(TAG, "Osd thumb created filename: " + thumbPath);
+            Logger.T(TAG, "Thumb filename: " + thumbPath);
         }
         catch(Exception ex) {
-            Logger.T(TAG, "Osd Could not create thumb");
+            Logger.T(TAG, "Could not create thumb for image " + thumbPath);
         }
     }
 }

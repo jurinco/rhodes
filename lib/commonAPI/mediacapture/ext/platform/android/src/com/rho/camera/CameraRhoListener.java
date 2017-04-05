@@ -330,7 +330,7 @@ IRhoListener {
 					Logger.T(TAG, "targetPath["+targetPath+"]");
 				}
 
-				thumbCreate(imgPath);	// Osd
+				thumbCreate(imgPath);
 
 				String useRealBitmapResize = getActualPropertyMap().get("useRealBitmapResize");
 				if ((useRealBitmapResize != null) && (Boolean.parseBoolean(useRealBitmapResize))) {
@@ -434,9 +434,9 @@ IRhoListener {
 					Logger.T(TAG, "$$$ resize finished $$$");
 				}
 
-				// Osd compress bitmap
+				// compress bitmap
 				else {
-					Logger.T(TAG, "Osd compress bitmap: " + compressLevel);
+					Logger.T(TAG, "Compress bitmap: " + compressLevel);
 					try {
 						Bitmap bitmap = BitmapFactory.decodeFile(imgPath);
 						ByteArrayOutputStream bos=new ByteArrayOutputStream();
@@ -453,9 +453,9 @@ IRhoListener {
 						}
 
 						File file_original = new File(imgPath);
-						Logger.T(TAG, "Osd original file size: " + file_original.length());
+						Logger.T(TAG, "Original file size: " + file_original.length());
 						File file_comppress= new File(imgPath+"_tmp");
-						Logger.T(TAG, "Osd compressed file size: " + file_comppress.length());
+						Logger.T(TAG, "Compressed file size: " + file_comppress.length());
 
 						file_original.delete();
 						file_comppress.renameTo(new File(imgPath));
@@ -912,7 +912,7 @@ public void deleteImage(){
 	}
 }
 
-	// Osd
+	// Read compress level property
 	private int compressLevelProp() {
 		int compressLevel = 100;
 		final Map<String, String> propertyMap = getActualPropertyMap();
@@ -923,11 +923,11 @@ public void deleteImage(){
 				compressLevel = 100;
 			}
 		}
-		Logger.T(TAG, "Osd choose compress level: " + compressLevel);
+		Logger.T(TAG, "Compress level: " + compressLevel);
 		return compressLevel;
 	}
 
-	// Osd
+	// Create thumb
 	private void thumbCreate(String imagePath) {
 		byte[] imageData = null;
 		Bitmap thumbBitmap = null;
@@ -955,10 +955,10 @@ public void deleteImage(){
 				imageBitmap = null;
 			}
 			System.gc();
-			Logger.T(TAG, "Osd choose image thumb filename: " + thumbPath);
+			Logger.T(TAG, "Image thumb filename: " + thumbPath);
 		}
 		catch(Exception ex) {
-			Logger.T(TAG, "Osd Choose could not create thumb");
+			Logger.T(TAG, "Could not create thumb for image " + thumbPath);
 		}
 	}
 }
