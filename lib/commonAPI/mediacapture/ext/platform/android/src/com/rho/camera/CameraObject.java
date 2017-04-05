@@ -54,9 +54,6 @@ public class CameraObject extends CameraBase implements ICameraObject {
     public static String userFilePath = null;
     private ContentValues values = null;
 
-    public static boolean CURRENT_SCREEN_AUTO_ROTATE_MODE;
-    public static boolean CURRENT_FULL_SCREEN_MODE;
-
     int getCameraIndex() {
         return CameraSingletonObject.getCameraIndex(getId());
     }
@@ -136,8 +133,11 @@ public class CameraObject extends CameraBase implements ICameraObject {
         }
         @Override
         public void onPictureTaken(byte[] data, Camera camera) {
+            int compressLevel = CameraObject.this.compressLevelProp();
+            boolean osdRotate = CameraObject.this.osdRotateProp();
             Intent intent = new Intent();
             OutputStream stream = null;
+            Logger.T(TAG, "Osd OnPictureTaken");
             try {
 
                 final Map<String, String> propertyMap = getActualPropertyMap();
@@ -175,16 +175,6 @@ public class CameraObject extends CameraBase implements ICameraObject {
                         intent.putExtra("error", "Invalid file path");
                     }
                 }
-                try {
-                    String folderPath = filePath.substring(0,filePath.lastIndexOf("/"));
-                    File folderFile = new File(folderPath);
-                    if (!folderFile.exists()) {
-                        folderFile.mkdirs();
-                    }
-                }
-                catch (Exception e) {
-                   e.printStackTrace();
-                }
                 Uri resultUri = null;
                 BitmapFactory.Options options=new BitmapFactory.Options();
                 options.inPurgeable = true;
@@ -193,17 +183,23 @@ public class CameraObject extends CameraBase implements ICameraObject {
                 android.hardware.Camera.CameraInfo info = new android.hardware.Camera.CameraInfo();
                 android.hardware.Camera.getCameraInfo(getCameraIndex(), info);
                 if (info.facing == android.hardware.Camera.CameraInfo.CAMERA_FACING_FRONT && OrientationListnerService.mRotation == 90) {
-                    		m.postRotate(270);
-                	}else if(info.facing == android.hardware.Camera.CameraInfo.CAMERA_FACING_FRONT && OrientationListnerService.mRotation == 270){
-              			m.postRotate(90);
-                	}else{
-              			m.postRotate(OrientationListnerService.mRotation);
-                	}
-		if (!Boolean.parseBoolean(getActualPropertyMap().get("useSystemViewfinder"))) {
-                	bitmap = Bitmap.createBitmap(bitmap , 0, 0, bitmap.getWidth(), bitmap.getHeight(), m, true);
-		}
-                 if (outputFormat.equalsIgnoreCase("dataUri")) {
-                    Logger.T(TAG, "outputFormat: " + outputFormat);   
+                    Logger.T(TAG, "Rotate 90");
+                    m.postRotate(0);//m.postRotate(270);
+                }else if(info.facing == android.hardware.Camera.CameraInfo.CAMERA_FACING_FRONT && OrientationListnerService.mRotation == 270){
+                    Logger.T(TAG, "Rotate 270");
+                    m.postRotate(180); //m.postRotate(90);
+                }else{
+                    Logger.T(TAG, "Rotate else: " + OrientationListnerService.mRotation);
+                    if(osdRotate) {
+                        m.postRotate(OrientationListnerService.mRotation + 90);
+                    }
+//                    m.postRotate(OrientationListnerService.mRotation);
+                }
+                if (!Boolean.parseBoolean(getActualPropertyMap().get("useSystemViewfinder"))) {
+                    bitmap = Bitmap.createBitmap(bitmap , 0, 0, bitmap.getWidth(), bitmap.getHeight(), m, true);
+                }
+                if (outputFormat.equalsIgnoreCase("dataUri")) {
+                    Logger.T(TAG, "outputFormat: " + outputFormat);
                 //    filePath = getTemporaryPath(filePath)+ ".jpg";
                     if (Boolean.parseBoolean(propertyMap.get("saveToDeviceGallery"))) 
                     {                        
@@ -250,7 +246,7 @@ public class CameraObject extends CameraBase implements ICameraObject {
                 	                    if(bitmap != null){
 						if (!Boolean.parseBoolean(getActualPropertyMap().get("useSystemViewfinder"))) {
                   	                    		ByteArrayOutputStream bytestream = new ByteArrayOutputStream();
-                  	                    		bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bytestream);
+                  	                    		bitmap.compress(Bitmap.CompressFormat.JPEG, compressLevel, bytestream);
                   	                    		byteArray = bytestream.toByteArray();
                   	                    		stream.write(byteArray);    
 						}
@@ -268,7 +264,7 @@ public class CameraObject extends CameraBase implements ICameraObject {
   	                    if(bitmap != null){
   	                    	if (!Boolean.parseBoolean(getActualPropertyMap().get("useSystemViewfinder"))) {
                   	                    		ByteArrayOutputStream bytestream = new ByteArrayOutputStream();
-                  	                    		bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bytestream);
+                  	                    		bitmap.compress(Bitmap.CompressFormat.JPEG, compressLevel, bytestream);
                   	                    		byteArray = bytestream.toByteArray();
                   	                    		stream.write(byteArray);    
 						}
@@ -287,21 +283,21 @@ public class CameraObject extends CameraBase implements ICameraObject {
 	                    if(bitmap != null){
 	                    	if (!Boolean.parseBoolean(getActualPropertyMap().get("useSystemViewfinder"))) {
                   	                    		ByteArrayOutputStream bytestream = new ByteArrayOutputStream();
-                  	                    		bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bytestream);
+                  	                    		bitmap.compress(Bitmap.CompressFormat.JPEG, compressLevel, bytestream);
                   	                    		byteArray = bytestream.toByteArray();
                   	                    		stream.write(byteArray);    
-							stream.flush();                        
-		                			stream.close();
-				}
+							    stream.flush();
+		                		stream.close();
+				            }
 	                    }
                     StringBuilder dataBuilder = new StringBuilder();
                     dataBuilder.append("data:image/jpeg;base64,");
-			if (!Boolean.parseBoolean(getActualPropertyMap().get("useSystemViewfinder"))) {
-                    		dataBuilder.append(Base64.encodeToString(byteArray, false));
-			}
-			else {
-				dataBuilder.append(Base64.encodeToString(data, false));
-			}
+                    if (!Boolean.parseBoolean(getActualPropertyMap().get("useSystemViewfinder"))) {
+                                    dataBuilder.append(Base64.encodeToString(byteArray, false));
+                    }
+                    else {
+                        dataBuilder.append(Base64.encodeToString(data, false));
+                    }
                     propertyMap.put("captureUri", dataBuilder.toString());
                     propertyMap.put("dataURI", "datauri_value");
                     Logger.T(TAG, dataBuilder.toString());
@@ -311,7 +307,7 @@ public class CameraObject extends CameraBase implements ICameraObject {
                 } else
                 if (outputFormat.equalsIgnoreCase("image")) {
                 //    filePath = getTemporaryPath(filePath)+ ".jpg";
-                    Logger.T(TAG, "outputFormat: " + outputFormat + ", path: " + filePath);                    
+                    Logger.T(TAG, "outputFormat: " + outputFormat + ", path image: " + filePath);
                     if (Boolean.parseBoolean(propertyMap.get("saveToDeviceGallery"))) 
                     {                        
                         ContentResolver contentResolver = ContextFactory.getContext().getContentResolver();
@@ -324,28 +320,33 @@ public class CameraObject extends CameraBase implements ICameraObject {
                         strUri = MediaStore.Images.Media.insertImage(contentResolver, bitmap, new File(propertyMap.get("fileName")).getName(), "Camera");
                         if (strUri != null) {
                             resultUri = Uri.parse(strUri);
+                            CameraObject.this.thumbCreate(bitmap, filePath);
                         } else {
                             throw new RuntimeException("Failed to save camera image to Gallery");
                         }
                     }
                     else
-                    {                    	
+                    {
+                        Logger.T(TAG, "Osd filePath: " + filePath);
+                        Logger.T(TAG, "Osd Image size: " + bitmap.getWidth() + "X" + bitmap.getHeight());
                         stream = new FileOutputStream(filePath);                        
-                        resultUri = Uri.fromFile(new File(filePath));                        
+                        resultUri = Uri.fromFile(new File(filePath));
+                        Logger.T(TAG, "Osd resultUri: " + resultUri);
                         byte[] byteArray = null;
   	                    if(bitmap != null){
   	                    	if (!Boolean.parseBoolean(getActualPropertyMap().get("useSystemViewfinder"))) {
-                  	                    		ByteArrayOutputStream bytestream = new ByteArrayOutputStream();
-                  	                    		bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bytestream);
-                  	                    		byteArray = bytestream.toByteArray();
-                  	                    		stream.write(byteArray);    
-						}
-						else {
-							stream.write(data);
-						}                      
-  	                        stream.flush();                        
-  	                        stream.close();
-  	                 }                       
+                                ByteArrayOutputStream bytestream = new ByteArrayOutputStream();
+                                bitmap.compress(Bitmap.CompressFormat.JPEG, compressLevel, bytestream);
+                                byteArray = bytestream.toByteArray();
+                                stream.write(byteArray);
+                                CameraObject.this.thumbCreate(bitmap, filePath);
+                            }
+                            else {
+                                stream.write(data);
+                            }
+                                stream.flush();
+                                stream.close();
+                            }
                     }
 
                     intent.putExtra(MediaStore.EXTRA_OUTPUT, resultUri);
@@ -442,9 +443,8 @@ public class CameraObject extends CameraBase implements ICameraObject {
         getPropertiesMap().put("compressionFormat", "jpg");
         getPropertiesMap().put("outputFormat", "image");
         getPropertiesMap().put("colorModel", "rgb");
-        getPropertiesMap().put("useSystemViewfinder", "true");
-        getPropertiesMap().put("useRealBitmapResize", "true");
-        getPropertiesMap().put("useRotationBitmapByEXIF", "true");
+        getPropertiesMap().put("useSystemViewfinder", "false");
+        getPropertiesMap().put("useRealBitmapResize", "false");
         getPropertiesMap().put("saveToDeviceGallery", "false");
         openCamera();
         Camera.Parameters params = getCamera().getParameters();
@@ -620,9 +620,6 @@ public class CameraObject extends CameraBase implements ICameraObject {
     @Override
     public void takePicture(Map<String, String> propertyMap, IMethodResult result) {
 
-        CURRENT_SCREEN_AUTO_ROTATE_MODE = RhodesActivity.safeGetInstance().getScreenAutoRotateMode();
-        CURRENT_FULL_SCREEN_MODE = RhodesActivity.safeGetInstance().getFullScreenMode();
-
         CameraSingletonObject.deprecated_choose_pic = false;
         deprecated_take_pic = false;
 
@@ -653,12 +650,11 @@ public class CameraObject extends CameraBase implements ICameraObject {
 
             Intent intent = null;
             if (Boolean.parseBoolean(actualPropertyMap.get("useSystemViewfinder"))) {
-                intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-
                 if (outputFormat.equalsIgnoreCase("image")) {
                     values = new ContentValues();
                     fileUri = RhodesActivity.getContext().getContentResolver().insert(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);                    
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                    intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
                     actualPropertyMap.put("captureUri", fileUri.toString());
                     propertyMap.put("dataURI", "");
                     // intent is null with MediaStore.EXTRA_OUTPUT so adding fileuri to map and get it with same key
@@ -773,4 +769,66 @@ public class CameraObject extends CameraBase implements ICameraObject {
 
     }
 
+    // Osd
+    private int compressLevelProp() {
+        int compressLevel = 100;
+        final Map<String, String> propertyMap = getActualPropertyMap();
+        if(propertyMap.get("compressLevel") != null) {
+            try {
+                compressLevel = Integer.parseInt(propertyMap.get("compressLevel"));
+            } catch (NumberFormatException n) {
+                compressLevel = 100;
+            }
+        }
+        Logger.T(TAG, "Osd compress level: " + compressLevel);
+        return compressLevel;
+    }
+
+    // Osd
+    private boolean osdRotateProp() {
+        boolean rotate = false;
+        final Map<String, String> propertyMap = getActualPropertyMap();
+
+        Logger.T(TAG, "Osd rotate prop: " + propertyMap.get("osdRotate"));
+
+        if(propertyMap.get("osdRotate") != null) {
+            try {
+                String strRotate = propertyMap.get("osdRotate");
+                rotate = strRotate.equals("1");
+            } catch (NumberFormatException n) {
+                rotate = false;
+            }
+        }
+        return rotate;
+    }
+
+    // Osd
+    private void thumbCreate(Bitmap imageBitmap, String filePath) {
+        byte[] imageData = null;
+        Bitmap thumbBitmap = null;
+        final int THUMB_SIZE = 64;
+        String thumbPath = filePath + "_thumb.jpg";
+        try {
+            FileOutputStream thumbFile = new FileOutputStream(thumbPath);
+
+            Float width = new Float(imageBitmap.getWidth());
+            Float height = new Float(imageBitmap.getHeight());
+            Float ratio = Math.min(THUMB_SIZE/width, THUMB_SIZE/height);
+            thumbBitmap = Bitmap.createScaledBitmap(imageBitmap, (int)(width * ratio), (int)(height * ratio), false);
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            thumbBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+            imageData = baos.toByteArray();
+            thumbFile.write(imageData);
+            if(thumbBitmap != null) {
+                thumbBitmap.recycle();
+                thumbBitmap = null;
+                System.gc();
+            }
+            Logger.T(TAG, "Osd thumb created filename: " + thumbPath);
+        }
+        catch(Exception ex) {
+            Logger.T(TAG, "Osd Could not create thumb");
+        }
+    }
 }
